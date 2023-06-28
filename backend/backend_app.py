@@ -1,3 +1,4 @@
+import CORS as CORS
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 
@@ -10,40 +11,48 @@ POSTS = [
 ]
 
 
+# Checks if sort query string is valid.
 def sort_validator(data):
     if data == "title" or data == "content":
         return data
     return "Sort only accepts: title or content", 405
 
 
+# Checks if Direction query string is valid.
 def direction_validator(data):
-    if data != "asc" or data != "desc":
+    if data == "asc" or data == "desc":
         return data
     return "Direction only accepts: asc or desc", 405
 
 
+# Displays all posts in database,
+# allows for user to include sorting if both sort and direction is satisfied.
 @app.route('/api/posts', methods=['GET'])
 def get_posts():
     sort_data = request.args.get('sort', '')
     direction_data = request.args.get('direction', '')
 
-    if type(sort_validator(sort_data)) == tuple:
-        return sort_validator(sort_data)
-    if type(direction_validator(direction_data)) == tuple:
-        return direction_validator(direction_data)
-    
-    if sort_data == "title":
-        sort_list = [post['title'] for post in POSTS]
+    if sort_data == '' or direction_data == '':
+        res = POSTS
     else:
-        sort_list = [post['content'] for post in POSTS]
-    if direction_data == "asc":
-        sort_list.sort(key=len)
-    else:
-        sort_list.sort(key=len, reverse=True)
-    res = [post for data in sort_list for post in POSTS if data in post.values()]
+        if type(sort_validator(sort_data)) == tuple:
+            return sort_validator(sort_data)
+        if type(direction_validator(direction_data)) == tuple:
+            return direction_validator(direction_data)
+
+        if sort_data == "title":
+            sort_list = [post['title'] for post in POSTS]
+        else:
+            sort_list = [post['content'] for post in POSTS]
+        if direction_data == "asc":
+            sort_list.sort(key=len)
+        else:
+            sort_list.sort(key=len, reverse=True)
+        res = [post for data in sort_list for post in POSTS if data in post.values()]
     return jsonify(res)
 
 
+# Adds a new post to database.
 @app.route('/api/posts', methods=['POST'])
 def add_posts():
     data = request.get_json()
@@ -59,6 +68,7 @@ def add_posts():
     return jsonify(POSTS)
 
 
+# Deletes a post with matching id from database.
 @app.route('/api/posts/<post_id>', methods=['DELETE'])
 def delete_posts(post_id):
     checker = 0
@@ -71,6 +81,7 @@ def delete_posts(post_id):
     return {"message": f"Post with id {post_id} has been deleted successfully."}
 
 
+# Updates a post with matching id from database.
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
 def update(post_id):
     found = [post for post in POSTS if post['id'] == post_id]
@@ -81,6 +92,7 @@ def update(post_id):
     return jsonify(found[0])
 
 
+# Returns posts if search data is a substring to a posts title or content.
 @app.route('/api/posts/search')
 def search():
     title = request.args.get('title', '')
